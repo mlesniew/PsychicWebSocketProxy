@@ -14,6 +14,7 @@ namespace PsychicWebSocketProxy {
 class NaiveProxy: public Proxy {
     public:
         NaiveProxy(): buffer(nullptr), size(0) {}
+        virtual ~NaiveProxy() { free(buffer); }
 
         virtual esp_err_t recv(httpd_ws_frame * frame) {
             const std::lock_guard<std::mutex> lock(recv_mutex);
