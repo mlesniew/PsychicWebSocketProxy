@@ -12,7 +12,7 @@
 
 
 #include "server.h"
-#include "naive_proxy.h"
+#include "shifting_buffer_proxy.h"
 
 #ifdef HTTPS
 String server_cert;
@@ -22,7 +22,7 @@ PsychicHttpsServer server;
 PsychicHttpServer server;
 #endif
 
-PsychicWebSocketProxy::Server websocket_handler([] { return new PsychicWebSocketProxy::NaiveProxy(); });
+PsychicWebSocketProxy::Server websocket_handler([] { return new PsychicWebSocketProxy::ShiftingBufferProxy<1024>(); });
 
 ::WiFiServer tcp_server(1883);
 PicoMQTT::Server mqtt(tcp_server, websocket_handler);
