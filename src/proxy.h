@@ -30,8 +30,8 @@ class Proxy {
             return bool(psychic_client);
         }
 
-        // this is called from the event loop running the server
-        virtual esp_err_t recv(httpd_ws_frame * frame) = 0;
+        // this iss called from the event loop running the server
+        virtual esp_err_t recv(httpd_req_t * request, httpd_ws_frame_t * frame) = 0;
 
         // these are called from the main loop
         virtual int available() = 0;

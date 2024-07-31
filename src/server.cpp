@@ -58,56 +58,43 @@ esp_err_t Server::handleRequest(PsychicRequest * request) {
     // prep our request
     PsychicWebSocketRequest wsRequest(request);
 
+    PsychicWebSocketClientProxy * pwscp = reinterpret_cast<PsychicWebSocketClientProxy *>
+                                          (PsychicWebSocketHandler::getClient(wsRequest.client()));
+
+    const std::shared_ptr<Proxy> ptr = pwscp->proxy.lock();
+    if (!ptr) {
+        // The synchronous client abandoned the connection
+        return ESP_FAIL;
+    }
+
     // init our memory for storing the packet
     httpd_ws_frame_t ws_pkt = { .len = 0 };
 
-    /* Set max_len = 0 to get the frame len */
+    // find out frame type and size
     esp_err_t ret = httpd_ws_recv_frame(wsRequest.request(), &ws_pkt, 0);
     if (ret != ESP_OK) {
         ESP_LOGE(PH_TAG, "httpd_ws_recv_frame failed to get frame len with %s", esp_err_to_name(ret));
         return ret;
     }
 
-    // okay, now try to load the packet
-    ESP_LOGI(PH_TAG, "frame len is %d", ws_pkt.len);
     if (!ws_pkt.len) {
         return ESP_OK;
     }
 
-    ws_pkt.payload = (uint8_t *) malloc(ws_pkt.len);
-    if (!ws_pkt.payload) {
-        ESP_LOGE(PH_TAG, "Failed to calloc memory for buf");
-        return ESP_ERR_NO_MEM;
-    }
-
-    /* Set max_len = ws_pkt.len to get the frame payload */
-    ret = httpd_ws_recv_frame(wsRequest.request(), &ws_pkt, ws_pkt.len);
-    if (ret != ESP_OK) {
-        ESP_LOGE(PH_TAG, "httpd_ws_recv_frame failed with %s", esp_err_to_name(ret));
-        free(ws_pkt.payload);
-        return ret;
-    }
-
-    // the code below replaces
-    //     ret = this->_onFrame(&wsRequest, &ws_pkt);
-    {
-        PsychicWebSocketClientProxy * client = reinterpret_cast<PsychicWebSocketClientProxy *>
-                                               (PsychicWebSocketHandler::getClient(wsRequest.client()));
-        const std::shared_ptr<Proxy> ptr = client->proxy.lock();
-        ret = ptr ? ptr->recv(&ws_pkt) : -1;
-    }
+    // push to proxy
+    ret = ptr->recv(wsRequest.request(), &ws_pkt);
 
     // logging housekeeping
     if (ret != ESP_OK) {
-        ESP_LOGE(PH_TAG, "httpd_ws_send_frame failed with %s", esp_err_to_name(ret));
+        ESP_LOGE(PH_TAG, "Proxy::recv() failed with %s", esp_err_to_name(ret));
     }
 
+#if 0
+    // TODO: Do we need this?
     ESP_LOGI(PH_TAG, "ws_handler: httpd_handle_t=%p, sockfd=%d, client_info:%d", request->server(),
              httpd_req_to_sockfd(request->request()), httpd_ws_get_fd_info(request->server(),
                      httpd_req_to_sockfd(request->request())));
-
-    // dont forget to release our buffer memory
-    free(ws_pkt.payload);
+#endif
 
     return ret;
 }
