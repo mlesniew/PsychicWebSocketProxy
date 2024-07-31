@@ -26,6 +26,8 @@ class Server: public PsychicWebSocketHandler {
         Client accept();
         void begin() { /* noop */ }
 
+        esp_err_t handleRequest(PsychicRequest * request) override;
+
     protected:
         virtual void addClient(PsychicClient * client) override;
         virtual void removeClient(PsychicClient * client) override;
