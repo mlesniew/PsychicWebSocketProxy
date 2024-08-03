@@ -70,7 +70,7 @@ void setup() {
     });
 
     // Subscribe to a topic and attach a callback
-    mqtt.subscribe("picomqtt/#", [](const char * topic, const char * payload) {
+    mqtt.subscribe("#", [](const char * topic, const char * payload) {
         // payload might be binary, but PicoMQTT guarantees that it's zero-terminated
         Serial.printf("Received message in topic '%s': %s\n", topic, payload);
     });

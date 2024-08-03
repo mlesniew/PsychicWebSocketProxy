@@ -35,12 +35,13 @@ class ShiftingBufferProxy: public Proxy {
                 // there's not enough memory at the end of the buffer, but
                 // we can recover some memory at the beginning
                 const size_t move_size = write_ptr - read_ptr;
+                const size_t shift_size = read_ptr - buffer;
                 memmove(buffer, read_ptr, move_size);
-                write_ptr -= move_size;
-                read_ptr -= move_size;
+                write_ptr -= shift_size;
+                read_ptr -= shift_size;
             }
 
-            frame->payload = (uint8_t *)(read_ptr);
+            frame->payload = (uint8_t *)(write_ptr);
             esp_err_t ret = httpd_ws_recv_frame(request, frame, frame_size);
             if (ret != ESP_OK) {
                 ESP_LOGE(PH_TAG, "httpd_ws_recv_frame failed with %s", esp_err_to_name(ret));
