@@ -16,8 +16,7 @@ namespace PsychicWebSocketProxy {
  * shifts the unread buffer contents to the beginning of the buffer, making continuous
  * space available at the end.
  */
-template <size_t size, unsigned long timeout_ms = 3000, esp_err_t error_on_no_memory = ESP_ERR_NO_MEM>
-class ShiftingBufferProxy: public StaticBufferProxy<size, timeout_ms, error_on_no_memory> {
+class ShiftingBufferProxy: public StaticBufferProxy {
     public:
         virtual esp_err_t recv(httpd_req_t * request, httpd_ws_frame_t * frame) override {
             const size_t frame_size = frame->len;
@@ -25,7 +24,7 @@ class ShiftingBufferProxy: public StaticBufferProxy<size, timeout_ms, error_on_n
             std::unique_lock<std::mutex> lock(recv_mutex);
             if (!cond.wait_for(
                         lock,
-                        std::chrono::milliseconds(timeout_ms),
+                        timeout,
             [this, frame_size]() -> bool {
             const size_t space_total = size - (write_ptr - read_ptr);
                 return frame_size <= space_total;
@@ -70,13 +69,6 @@ class ShiftingBufferProxy: public StaticBufferProxy<size, timeout_ms, error_on_n
             write_ptr -= shift_size;
             read_ptr -= shift_size;
         }
-
-        using StaticBufferProxy<size, timeout_ms, error_on_no_memory>::receive_data;
-        using StaticBufferProxy<size, timeout_ms, error_on_no_memory>::recv_mutex;
-        using StaticBufferProxy<size, timeout_ms, error_on_no_memory>::cond;
-        using StaticBufferProxy<size, timeout_ms, error_on_no_memory>::buffer;
-        using StaticBufferProxy<size, timeout_ms, error_on_no_memory>::read_ptr;
-        using StaticBufferProxy<size, timeout_ms, error_on_no_memory>::write_ptr;
 };
 
 }

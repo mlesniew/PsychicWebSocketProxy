@@ -8,6 +8,10 @@ namespace PsychicWebSocketProxy {
 class Proxy {
     public:
         Proxy(): psychic_client(nullptr) {}
+
+        Proxy(const Proxy & other) = delete;
+        const Proxy & operator=(const Proxy & other) = delete;
+
         virtual ~Proxy() {}
 
         void set_websocket_client(PsychicWebSocketClient * psychic_client) {

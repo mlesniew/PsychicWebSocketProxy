@@ -44,10 +44,14 @@ namespace PsychicWebSocketProxy {
  * On top of that, the implementation is simple and easy to understand, and therefore
  * less likely to contain bugs.
  */
-template <size_t size, unsigned long timeout_ms = 3000, esp_err_t error_on_no_memory = ESP_ERR_NO_MEM>
 class StaticBufferProxy: public Proxy {
     public:
-        StaticBufferProxy(): read_ptr(buffer), write_ptr(buffer) {}
+        StaticBufferProxy(const size_t size = 1024, unsigned long timeout_ms = 3000,
+                          esp_err_t error_on_no_memory = ESP_ERR_NO_MEM):
+            size(size), timeout(timeout_ms), error_on_no_memory(error_on_no_memory),
+            buffer((char *) malloc(size)), read_ptr(buffer), write_ptr(buffer) {}
+
+        virtual ~StaticBufferProxy() { free(buffer); }
 
         virtual size_t get_space_available_for_write() {
             const size_t space_tail = (buffer + size) - write_ptr;
@@ -60,7 +64,7 @@ class StaticBufferProxy: public Proxy {
             std::unique_lock<std::mutex> lock(recv_mutex);
             if (!cond.wait_for(
                         lock,
-                        std::chrono::milliseconds(timeout_ms),
+                        timeout,
             [this, frame_size]() -> bool {
             const size_t space_tail = (buffer + size) - write_ptr;
                 return frame_size <= space_tail;
@@ -101,6 +105,10 @@ class StaticBufferProxy: public Proxy {
             return (write_ptr != read_ptr) ? ((unsigned char *) read_ptr)[0] : -1;
         }
 
+        const size_t size;
+        const std::chrono::milliseconds timeout;
+        const esp_err_t error_on_no_memory;
+
     protected:
         /* Read received data into the buffer (at write_ptr) */
         esp_err_t receive_data(httpd_req_t * request, httpd_ws_frame_t * frame) {
@@ -118,7 +126,7 @@ class StaticBufferProxy: public Proxy {
         std::mutex recv_mutex;
         std::condition_variable cond;
 
-        char buffer[size];
+        char * buffer;
         char * read_ptr;
         char * write_ptr;
 };

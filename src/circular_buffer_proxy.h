@@ -15,8 +15,7 @@ namespace PsychicWebSocketProxy {
  * The implementation of this class uses ShiftingBufferProxy as a base, because some of it's methods
  * can be reused.
  */
-template <size_t size, unsigned long timeout_ms = 3000, esp_err_t error_on_no_memory = ESP_ERR_NO_MEM>
-class CircularBufferProxy: public ShiftingBufferProxy<size, timeout_ms, error_on_no_memory> {
+class CircularBufferProxy: public ShiftingBufferProxy {
     public:
         virtual esp_err_t recv(httpd_req_t * request, httpd_ws_frame_t * frame) override {
             const size_t frame_size = frame->len;
@@ -25,7 +24,7 @@ class CircularBufferProxy: public ShiftingBufferProxy<size, timeout_ms, error_on
 
             if (!cond.wait_for(
                         lock,
-                        std::chrono::milliseconds(timeout_ms),
+                        timeout,
             [this, frame_size]() -> bool {
             if (read_ptr <= write_ptr) {
                     const size_t space_tail = (buffer + size) - write_ptr;
@@ -166,14 +165,6 @@ class CircularBufferProxy: public ShiftingBufferProxy<size, timeout_ms, error_on
         }
 
         char * read_wrap;
-
-        using ShiftingBufferProxy<size, timeout_ms, error_on_no_memory>::receive_data;
-        using ShiftingBufferProxy<size, timeout_ms, error_on_no_memory>::shift_buffer;
-        using ShiftingBufferProxy<size, timeout_ms, error_on_no_memory>::recv_mutex;
-        using ShiftingBufferProxy<size, timeout_ms, error_on_no_memory>::cond;
-        using ShiftingBufferProxy<size, timeout_ms, error_on_no_memory>::buffer;
-        using ShiftingBufferProxy<size, timeout_ms, error_on_no_memory>::read_ptr;
-        using ShiftingBufferProxy<size, timeout_ms, error_on_no_memory>::write_ptr;
 };
 
 }
