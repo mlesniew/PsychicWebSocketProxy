@@ -1,0 +1,26 @@
+{
+  "name": "PsychicWebSocketProxy",
+  "version": "1.0.0",
+  "authors": [
+    {
+      "name": "Michał Leśniewski",
+      "email": "mlesniew@gmail.com",
+      "maintainer": true
+    }
+  ],
+  "license": "GPL-3.0-or-later",
+  "description": "PsychicHTTP websocket adapter for synchronous libraries",
+  "keywords": "network,http,https,websocket,mqtt,picomqtt",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mlesniew/PsychicWebSocketProxy"
+  },
+  "frameworks": "arduino",
+  "platforms": "espressif32",
+  "dependencies": [
+    {
+      "owner": "hoeken",
+      "name": "PsychicHttp"
+    }
+  ]
+}
