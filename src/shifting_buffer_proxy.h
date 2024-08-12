@@ -2,36 +2,41 @@
 
 #include <Arduino.h>
 
-#include "proxy.h"
+#include "static_buffer_proxy.h"
 
 namespace PsychicWebSocketProxy {
 
-// The proxy implementation pre-allocates a buffer of the given size and keeps reusing
-// it.  Subsequent chunks of data received on the websocket are written to the buffer
-// one after the other.  At some point, another chunk of data will not fit into the
-// remaining space of the buffer.  However, at this point, some of the data which has
-// been written before may already have been consumed.  If that's the case, the unread
-// contents of the buffer are shifted to the beginning of the buffer making more space
-// at the end.
-template <size_t size, bool skip_if_no_space=false>
-class ShiftingBufferProxy: public Proxy {
+/* This proxy implementation is similar to the StaticBufferProxy, but it doesn't
+ * block waiting for the reader to consume all data before receiving a frame, which
+ * wouldn't fit in the tail of the buffer.
+ *
+ * Instead, it checks if there's enough total space in the buffer to fit the buffer
+ * considering both free space at the beginning and at the end.  If there's not enough
+ * space at the end, but total space is enough to store the next chunk of data, it
+ * shifts the unread buffer contents to the beginning of the buffer, making continuous
+ * space available at the end.
+ */
+template <size_t size, unsigned long timeout_ms = 3000, esp_err_t error_on_no_memory = ESP_ERR_NO_MEM>
+class ShiftingBufferProxy: public StaticBufferProxy<size, timeout_ms, error_on_no_memory> {
     public:
-        ShiftingBufferProxy(): read_ptr(buffer), write_ptr(buffer) {}
-
         virtual esp_err_t recv(httpd_req_t * request, httpd_ws_frame_t * frame) override {
             const size_t frame_size = frame->len;
 
-            const std::lock_guard<std::mutex> lock(recv_mutex);
+            std::unique_lock<std::mutex> lock(recv_mutex);
+            if (!cond.wait_for(
+                        lock,
+                        std::chrono::milliseconds(timeout_ms),
+            [this, frame_size]() -> bool {
+            const size_t space_total = size - (write_ptr - read_ptr);
+                return frame_size <= space_total;
+            })) {
+                // no space left in buffer
+                return error_on_no_memory;
+            }
 
             const size_t space_tail = (buffer + size) - write_ptr;
-            const size_t space_head = read_ptr - buffer;
-            const size_t space_total = space_head + space_tail;
 
             if (space_tail < frame_size) {
-                if (space_total < frame_size) {
-                    return skip_if_no_space ? ESP_OK : ESP_ERR_NO_MEM;
-                }
-
                 // there's not enough memory at the end of the buffer, but
                 // we can recover some memory at the beginning
                 const size_t move_size = write_ptr - read_ptr;
@@ -41,42 +46,37 @@ class ShiftingBufferProxy: public Proxy {
                 read_ptr -= shift_size;
             }
 
-            frame->payload = (uint8_t *)(write_ptr);
-            esp_err_t ret = httpd_ws_recv_frame(request, frame, frame_size);
-            if (ret != ESP_OK) {
-                ESP_LOGE(PH_TAG, "httpd_ws_recv_frame failed with %s", esp_err_to_name(ret));
-            } else {
-                write_ptr += frame_size;
-            }
-            return ret;
-        }
-
-        virtual int available() {
-            const std::lock_guard<std::mutex> lock(recv_mutex);
-            return write_ptr - read_ptr;
-        }
-
-        virtual int read(uint8_t * ptr, size_t len) {
-            const std::lock_guard<std::mutex> lock(recv_mutex);
-            const size_t bytes_available = write_ptr - read_ptr;
-            const size_t bytes_to_read = len < bytes_available ? len : bytes_available;
-            if (bytes_to_read) {
-                memcpy(ptr, read_ptr, bytes_to_read);
-                read_ptr += bytes_to_read;
-            }
-            return bytes_to_read;
-        }
-
-        virtual int peek() {
-            const std::lock_guard<std::mutex> lock(recv_mutex);
-            return (write_ptr > read_ptr) ? ((unsigned char *) read_ptr)[0] : -1;
+            return receive_data(request, frame);
         }
 
     protected:
-        std::mutex recv_mutex;
-        char buffer[size];
-        char * read_ptr;
-        char * write_ptr;
+        /* Move the unread contents of the buffer to free up space at the end.
+            before:
+                |.....#####.....|
+                ^     ^    ^
+                |     |    +- write_ptr
+                |     +------ read_ptr
+                +------------ buffer
+            after:
+                |#####..........|
+                ^     ^
+                |     +- write_ptr
+                +- buffer = read_ptr
+        */
+        void shift_buffer() {
+            const size_t move_size = write_ptr - read_ptr;
+            const size_t shift_size = read_ptr - buffer;
+            memmove(buffer, read_ptr, move_size);
+            write_ptr -= shift_size;
+            read_ptr -= shift_size;
+        }
+
+        using StaticBufferProxy<size, timeout_ms, error_on_no_memory>::receive_data;
+        using StaticBufferProxy<size, timeout_ms, error_on_no_memory>::recv_mutex;
+        using StaticBufferProxy<size, timeout_ms, error_on_no_memory>::cond;
+        using StaticBufferProxy<size, timeout_ms, error_on_no_memory>::buffer;
+        using StaticBufferProxy<size, timeout_ms, error_on_no_memory>::read_ptr;
+        using StaticBufferProxy<size, timeout_ms, error_on_no_memory>::write_ptr;
 };
 
 }

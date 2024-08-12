@@ -69,15 +69,19 @@ void setup() {
         return request->reply(200, "text/plain", "Hello world!");
     });
 
+#if 0
     // Subscribe to a topic and attach a callback
     mqtt.subscribe("#", [](const char * topic, const char * payload) {
         // payload might be binary, but PicoMQTT guarantees that it's zero-terminated
-        Serial.printf("Received message in topic '%s': %s\n", topic, payload);
+        static unsigned int num = 0;
+        Serial.printf("Received message %u in topic '%s': %s\n", ++num, topic, payload);
     });
+#endif
 
     mqtt.begin();
 }
 
 void loop() {
     mqtt.loop();
+    // delay(15 * 1000);
 }
