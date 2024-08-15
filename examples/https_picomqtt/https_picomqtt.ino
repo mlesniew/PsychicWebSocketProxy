@@ -1,9 +1,13 @@
 // dependencies: mlesniew/PicoMQTT hoeken/PsychicHTTP
+// platform: espressif32@6.6.0
+// filesystem: littlefs
 #include <Arduino.h>
+#include <ESPmDNS.h>
 #include <WiFi.h>
+#include <LittleFS.h>
 
 #include <PicoMQTT.h>
-#include <PsychicHttp.h>
+#include <PsychicHttpsServer.h>
 #include <PsychicWebSocketProxy.h>
 
 #if __has_include("config.h")
@@ -26,8 +30,10 @@ PsychicWebSocketProxy::Server websocket_handler;
 // object as the server to use.
 PicoMQTT::Server mqtt(websocket_handler);
 
-// Setup a PsychicHttpServer as usual
-PsychicHttpServer server;
+// Setup a PsychicHttpsServer as usual
+String server_cert;
+String server_key;
+PsychicHttpsServer server;
 
 void setup() {
     // Setup serial
@@ -40,14 +46,30 @@ void setup() {
     while (WiFi.status() != WL_CONNECTED) { delay(1000); }
     Serial.printf("WiFi connected, IP: %s\n", WiFi.localIP().toString().c_str());
 
+    MDNS.begin("picomqtt");
+
     // Setup server
     server.config.max_uri_handlers = 20;
-    server.listen(80);
+    {
+        LittleFS.begin();
+        File fp = LittleFS.open("/server.crt");
+        if (fp) {
+            server_cert = fp.readString();
+            fp.close();
+        }
 
+        fp = LittleFS.open("/server.key");
+        if (fp) {
+            server_key = fp.readString();
+            fp.close();
+        }
+    }
     // Some strict clients require that the websocket subprotocol is mqtt.
     // NOTE: The subprotocol must be set *before* attaching the handler to a
     // server path using server.on(...)
     websocket_handler.setSubprotocol("mqtt");
+
+    server.listen(443, server_cert.c_str(), server_key.c_str());
 
     // bind the PsychicWebSocketProxy::Server to an url like a websocket handler
     server.on("/mqtt", &websocket_handler);

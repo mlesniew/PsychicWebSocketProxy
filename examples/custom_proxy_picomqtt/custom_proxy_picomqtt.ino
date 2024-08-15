@@ -24,7 +24,7 @@
 // The constructor accepts a function parameter which will be used as
 // a proxy object factory.  Proxy class differ in how the received
 // data is buffered.  See *_proxy.h headers for more details on each.
-PsychicWebSocketProxy::Server websocket_handler([]{ return new PsychicWebSocketProxy::DynamicBufferProxy(); });
+PsychicWebSocketProxy::Server websocket_handler;
 
 // Alternative examples:
 //   PsychicWebSocketProxy::Server websocket_handler([]{ return new PsychicWebSocketProxy::CircularBufferProxy(512, 10 * 1000, ESP_OK); });
@@ -63,12 +63,13 @@ void setup() {
     server.config.max_uri_handlers = 20;
     server.listen(80);
 
+    // Some strict clients require that the websocket subprotocol is mqtt.
+    // NOTE: The subprotocol must be set *before* attaching the handler to a
+    // server path using server.on(...)
+    websocket_handler.setSubprotocol("mqtt");
+
     // bind the PsychicWebSocketProxy::Server to an url like a websocket handler
     server.on("/mqtt", &websocket_handler);
-
-    // some clients require that the websocket subprotocol is mqtt, this can be
-    // omitted (or changed) for some clients
-    websocket_handler.setSubprotocol("mqtt");
 
     // Subscribe to a topic and attach a callback
     mqtt.subscribe("#", [](const char * topic, const char * payload) {
