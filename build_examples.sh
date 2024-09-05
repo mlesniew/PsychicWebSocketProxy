@@ -51,7 +51,10 @@ do
 		then
 			echo "lib_deps = $DEPENDENCIES" >> platformio.ini
 		fi
-		if [ -n "$REQUIRED_PLATFORM" ]
+		if [ -n "$PLATFORM_OVERRIDE" ]
+		then
+			sed -E -i "s#^platform *=.*#platform = $PLATFORM_OVERRIDE#" platformio.ini
+		elif [ -n "$REQUIRED_PLATFORM" ]
 		then
 			sed -E -i "s#^platform *=.*#platform = $REQUIRED_PLATFORM#" platformio.ini
 		fi
