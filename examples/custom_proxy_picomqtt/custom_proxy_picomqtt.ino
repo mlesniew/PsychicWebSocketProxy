@@ -24,7 +24,7 @@
 // The constructor accepts a function parameter which will be used as
 // a proxy object factory.  Proxy class differ in how the received
 // data is buffered.  See *_proxy.h headers for more details on each.
-PsychicWebSocketProxy::Server websocket_handler;
+PsychicWebSocketProxy::Server websocket_handler([] { return new PsychicWebSocketProxy::SingleFrameProxy(); });
 
 // Alternative examples:
 //   PsychicWebSocketProxy::Server websocket_handler([]{ return new PsychicWebSocketProxy::CircularBufferProxy(512, 10 * 1000, ESP_OK); });

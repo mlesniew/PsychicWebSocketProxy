@@ -8,14 +8,14 @@
 #include <PsychicHttp.h>
 
 #include "proxy.h"
-#include "shifting_buffer_proxy.h"
+#include "single_frame_proxy.h"
 #include "client.h"
 
 namespace PsychicWebSocketProxy {
 
 class Server: public PsychicWebSocketHandler {
     public:
-        // TODO: This class's name is terrible
+        // This class's name is terrible
         class PsychicWebSocketClientProxy: public PsychicWebSocketClient {
             public:
                 PsychicWebSocketClientProxy(PsychicClient * client, const std::shared_ptr<Proxy> & proxy);
@@ -23,7 +23,7 @@ class Server: public PsychicWebSocketHandler {
                 const std::weak_ptr<Proxy> proxy;
         };
 
-        Server(std::function<Proxy *()> proxy_factory = []{ return new ShiftingBufferProxy(); });
+        Server(std::function<Proxy *()> proxy_factory = [] { return new SingleFrameProxy(); });
         Client accept();
         void begin() { /* noop */ }
 

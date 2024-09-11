@@ -30,7 +30,8 @@ class Proxy {
 
         virtual uint8_t connected() {
             const std::lock_guard<std::mutex> lock(send_mutex);
-            // TODO: Is this check sufficient?
+            // The psychic_client is set to NULL when the connection managed by PsychicHttp dies.
+            // As long as it's not NULL, we're connected.
             return bool(psychic_client);
         }
 

@@ -89,13 +89,6 @@ esp_err_t Server::handleRequest(PsychicRequest * request) {
         ESP_LOGE(PH_TAG, "Proxy::recv() failed with %s", esp_err_to_name(ret));
     }
 
-#if 0
-    // TODO: Do we need this?
-    ESP_LOGI(PH_TAG, "ws_handler: httpd_handle_t=%p, sockfd=%d, client_info:%d", request->server(),
-             httpd_req_to_sockfd(request->request()), httpd_ws_get_fd_info(request->server(),
-                     httpd_req_to_sockfd(request->request())));
-#endif
-
     return ret;
 }
 
