@@ -14,6 +14,10 @@ class Client: public ::Client {
         // dummy implementations -- they're not needed but have to be defined, because they're abstract in ::Client
         virtual int connect(IPAddress ip, uint16_t port) { return 0; }
         virtual int connect(const char * host, uint16_t port) { return 0; }
+#ifdef PSYCHICWEBSOCKET_PROXY_EXTRA_CONNECT_METHODS
+        virtual int connect(IPAddress ip, uint16_t port, int32_t timeout) { return 0; };
+        virtual int connect(const char * host, uint16_t port, int32_t timeout) { return 0; };
+#endif
         virtual void flush() override { /* noop */ }
 
         // NOTE: The methods below access proxy without checking for NULL.  The check is skipped for speed.

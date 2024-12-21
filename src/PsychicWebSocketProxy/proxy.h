@@ -3,6 +3,12 @@
 
 #include <PsychicHttp.h>
 
+#ifdef ESP32
+#if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 1, 0)
+#define PSYCHICWEBSOCKET_PROXY_EXTRA_CONNECT_METHODS
+#endif
+#endif
+
 namespace PsychicWebSocketProxy {
 
 class Proxy {
